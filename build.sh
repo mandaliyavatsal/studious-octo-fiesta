@@ -5,92 +5,111 @@
 
 set -e
 
-echo "🔨 Building Offline AI Assistant for macOS Apple Silicon..."
+echo "🔨 Building Offline AI Assistant..."
 
 # Ensure we're in the right directory
 cd "$(dirname "$0")"
 
-# Check if Xcode command line tools are installed
-if ! command -v xcodebuild &> /dev/null; then
-    echo "❌ Error: Xcode command line tools are not installed."
-    echo "Please install them with: xcode-select --install"
-    exit 1
-fi
+# Check if we have xcodebuild (macOS) or use Swift Package Manager (Linux/other)
+if command -v xcodebuild &> /dev/null; then
+    echo "📱 Building macOS app with Xcode..."
+    cd OfflineAIAssistant
 
-# Build the project
-echo "📱 Building the app..."
-cd OfflineAIAssistant
+    xcodebuild \
+        -project OfflineAIAssistant.xcodeproj \
+        -scheme OfflineAIAssistant \
+        -configuration Release \
+        -arch arm64 \
+        ARCHS=arm64 \
+        ONLY_ACTIVE_ARCH=NO \
+        clean build
 
-xcodebuild \
-    -project OfflineAIAssistant.xcodeproj \
-    -scheme OfflineAIAssistant \
-    -configuration Release \
-    -arch arm64 \
-    ARCHS=arm64 \
-    ONLY_ACTIVE_ARCH=NO \
-    clean build
+    echo "✅ macOS app build completed successfully!"
 
-echo "✅ Build completed successfully!"
+    # Find the built app
+    BUILT_APP=$(find . -name "OfflineAIAssistant.app" -path "*/Build/Products/Release/*" | head -n 1)
 
-# Find the built app
-BUILT_APP=$(find . -name "OfflineAIAssistant.app" -path "*/Build/Products/Release/*" | head -n 1)
+    if [ -z "$BUILT_APP" ]; then
+        echo "❌ Error: Could not find the built app"
+        exit 1
+    fi
 
-if [ -z "$BUILT_APP" ]; then
-    echo "❌ Error: Could not find the built app"
-    exit 1
-fi
+    echo "📦 App built at: $BUILT_APP"
 
-echo "📦 App built at: $BUILT_APP"
+    # Copy to a distributable location
+    DIST_DIR="../dist"
+    mkdir -p "$DIST_DIR"
+    rm -rf "$DIST_DIR/OfflineAIAssistant.app"
+    cp -R "$BUILT_APP" "$DIST_DIR/"
 
-# Copy to a distributable location
-DIST_DIR="../dist"
-mkdir -p "$DIST_DIR"
-rm -rf "$DIST_DIR/OfflineAIAssistant.app"
-cp -R "$BUILT_APP" "$DIST_DIR/"
+    echo "📋 App copied to: $DIST_DIR/OfflineAIAssistant.app"
 
-echo "📋 App copied to: $DIST_DIR/OfflineAIAssistant.app"
+elif command -v swift &> /dev/null; then
+    echo "🔧 Building cross-platform library with Swift Package Manager..."
+    
+    swift build
+    
+    echo "✅ Library build completed successfully!"
+    echo "📦 Library built in .build directory"
+    
+    # Create a distributable version
+    DIST_DIR="dist"
+    mkdir -p "$DIST_DIR"
+    
+    # Copy the library files for distribution
+    echo "📋 Creating distribution package..."
+    cp -R Sources "$DIST_DIR/"
+    cp Package.swift "$DIST_DIR/"
+    cp demo_main.swift "$DIST_DIR/"
+    
+    echo "📦 Distribution package created in: $DIST_DIR/"
+    
+    # Create a README for the library distribution
+    cat > "$DIST_DIR/README.md" << 'EOF'
+# Offline AI Assistant - Cross-Platform Library
 
-# Create a simple installer
-cat > "$DIST_DIR/README.md" << EOF
-# Offline AI Assistant for macOS
+This is a cross-platform Swift library version of the Offline AI Assistant.
 
-## Installation
+## Building
 
-1. Copy OfflineAIAssistant.app to your Applications folder
-2. Double-click to launch the app
-3. On first launch, the app will automatically download the AI model (approximately 669MB)
-4. Once the model is downloaded, you can start chatting with your offline AI assistant
-
-## Features
-
-- Completely offline AI assistant
-- Privacy-focused: all conversations stay on your Mac
-- Optimized for Apple Silicon (M1/M2/M3 Macs)
-- Automatic model downloading and configuration
-- Modern macOS interface
-
-## System Requirements
-
-- macOS 13.0 or later
-- Apple Silicon Mac (M1, M2, M3, or later)
-- At least 2GB of free disk space for the AI model
-- Internet connection for initial model download
+```bash
+swift build
+```
 
 ## Usage
 
-Simply type your questions or requests in the chat interface. The AI assistant can help with:
-- Answering questions
-- Writing assistance
-- Code explanations and help
-- General conversation
+The library provides the core AI engine functionality that can be integrated into:
+- macOS applications (using the original Xcode project)
+- iOS applications
+- Command-line tools
+- Other Swift applications
 
-Enjoy your private, offline AI assistant!
+## Core Components
+
+- `AIEngine`: Main AI processing engine
+- `ModelDownloader`: Handles downloading and caching of AI models
+- `AppConfig`: Configuration and system information utilities
+
+## Demo
+
+A console demo is available in `demo_main.swift`. To run it:
+
+```bash
+# Copy the demo file to a new executable project
+swift package init --type executable --name OfflineAIDemo
+# Copy the source files and demo_main.swift
+# Then build and run
+```
+
+Enjoy your offline AI assistant library!
 EOF
 
-echo "📝 Created README.md with installation instructions"
+    echo "📝 Created library distribution with README.md"
+    
+else
+    echo "❌ Error: Neither Xcode nor Swift Package Manager found."
+    echo "Please install Xcode (macOS) or Swift (other platforms)"
+    exit 1
+fi
+
 echo "🎉 Build and packaging complete!"
-echo ""
-echo "To distribute the app:"
-echo "1. Share the entire 'dist' folder"
-echo "2. Users should copy OfflineAIAssistant.app to their Applications folder"
-echo "3. The app will automatically download models on first launch"
