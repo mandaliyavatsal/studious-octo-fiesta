@@ -14,6 +14,7 @@
 		1A0000009 /* ModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000000A /* ModelDownloader.swift */; };
 		1A000000B /* AIEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000000C /* AIEngine.swift */; };
 		1A000000D /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000000E /* ChatView.swift */; };
+		1A0000020 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000021 /* AppConfig.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		1A000000C /* AIEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEngine.swift; sourceTree = "<group>"; };
 		1A000000E /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		1A0000010 /* OfflineAIAssistant.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OfflineAIAssistant.entitlements; sourceTree = "<group>"; };
+		1A0000021 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +57,7 @@
 				1A000000E /* ChatView.swift */,
 				1A000000A /* ModelDownloader.swift */,
 				1A000000C /* AIEngine.swift */,
+				1A0000021 /* AppConfig.swift */,
 				1A0000006 /* Assets.xcassets */,
 				1A0000010 /* OfflineAIAssistant.entitlements */,
 				1A0000015 /* Preview Content */,
@@ -152,6 +155,7 @@
 				1A000000D /* ChatView.swift in Sources */,
 				1A0000009 /* ModelDownloader.swift in Sources */,
 				1A000000B /* AIEngine.swift in Sources */,
+				1A0000020 /* AppConfig.swift in Sources */,
 				1A0000001 /* OfflineAIAssistantApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
