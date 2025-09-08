@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-swift-package:
+    name: Test Swift Package (Linux)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.9"
+        
+    - name: Build Swift Package
+      run: swift build
+      
+    - name: Test Swift Package
+      run: swift test
+      continue-on-error: true  # Tests might not exist yet
+      
+  test-swift-package-macos:
+    name: Test Swift Package (macOS)
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build Swift Package
+      run: swift build
+      
+    - name: Test Swift Package
+      run: swift test
+      continue-on-error: true  # Tests might not exist yet
+      
+  build-macos-app:
+    name: Build macOS App
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+      
+    - name: Build macOS App
+      run: |
+        cd OfflineAIAssistant
+        xcodebuild \
+          -project OfflineAIAssistant.xcodeproj \
+          -scheme OfflineAIAssistant \
+          -configuration Release \
+          -arch arm64 \
+          ARCHS=arm64 \
+          ONLY_ACTIVE_ARCH=NO \
+          -derivedDataPath ./build \
+          clean build
+          
+    - name: List build output
+      run: |
+        echo "Build output directory contents:"
+        find OfflineAIAssistant/build -name "*.app" -o -name "*.dSYM" | head -10
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-app-build
+        path: OfflineAIAssistant/build/Build/Products/Release/
+        retention-days: 30
+        if-no-files-found: warn

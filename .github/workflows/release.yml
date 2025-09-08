@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+
+permissions:
+  contents: write  # Required for creating releases
+
+jobs:
+  build-and-release:
+    name: Build and Create Release
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+      
+    - name: Build Swift Package
+      run: swift build -c release
+      
+    - name: Build macOS App with build script
+      run: ./build.sh
+      
+    - name: Create distribution package
+      run: |
+        # Create a distributable package
+        mkdir -p release-artifacts
+        
+        # Package the built macOS app if it exists
+        if [ -d "dist/OfflineAIAssistant.app" ]; then
+          cd dist
+          zip -r ../release-artifacts/OfflineAIAssistant-${{ steps.tag.outputs.tag }}-macOS.zip OfflineAIAssistant.app
+          cd ..
+        fi
+        
+        # Package the Swift library for distribution
+        mkdir -p release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}
+        cp -R Sources release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        cp Package.swift release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        cp README.md release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        cp LICENSE release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        cp demo_main.swift release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        
+        cd release-artifacts
+        zip -r OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}.zip OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        rm -rf OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}/
+        cd ..
+        
+        # List created artifacts
+        echo "Created release artifacts:"
+        ls -la release-artifacts/
+        
+    - name: Extract release notes
+      id: release-notes
+      run: |
+        # Try to extract release notes from commit messages since last tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "RELEASE_NOTES=Initial release of Offline AI Assistant ${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      id: create-release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        release_name: Offline AI Assistant ${{ steps.tag.outputs.tag }}
+        body: |
+          ## Offline AI Assistant ${{ steps.tag.outputs.tag }}
+          
+          A privacy-focused, offline AI assistant application for Apple Silicon Macs.
+          
+          ### Downloads
+          - **macOS App**: Download `OfflineAIAssistant-${{ steps.tag.outputs.tag }}-macOS.zip` for the complete macOS application
+          - **Swift Library**: Download `OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}.zip` for the Swift package library
+          
+          ### Installation (macOS App)
+          1. Download the macOS zip file
+          2. Extract and copy `OfflineAIAssistant.app` to your Applications folder
+          3. Double-click to launch (first launch will download AI models)
+          
+          ### System Requirements
+          - macOS 13.0 (Ventura) or later
+          - Apple Silicon Mac (M1, M2, M3, or later)
+          - At least 2GB of free disk space for AI models
+          
+          ### Changes
+          ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload macOS App
+      if: hashFiles('release-artifacts/OfflineAIAssistant-*.zip') != ''
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: release-artifacts/OfflineAIAssistant-${{ steps.tag.outputs.tag }}-macOS.zip
+        asset_name: OfflineAIAssistant-${{ steps.tag.outputs.tag }}-macOS.zip
+        asset_content_type: application/zip
+        
+    - name: Upload Swift Library
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: release-artifacts/OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}.zip
+        asset_name: OfflineAIAssistant-Library-${{ steps.tag.outputs.tag }}.zip
+        asset_content_type: application/zip
